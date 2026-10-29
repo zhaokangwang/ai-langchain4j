@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>订单报表 · 知序</title><link rel="stylesheet" href="css/reports.css">
+  <script defer src="vendor/vue.global.prod.js"></script><script defer src="js/reports.js"></script>
+</head>
+<body>
+<div id="reports" v-cloak>
+  <header class="site-header"><a class="brand" href="/">知序 <span> / 订单报表</span></a><a href="/">返回客服助手 ↗</a></header>
+  <main>
+    <div class="page-heading"><div><p class="eyebrow">ORDER REPORT</p><h1>让订单数据，一目了然。</h1><p class="muted">筛选明细、查看汇总，导出同一份数据快照。</p></div><span class="demo-badge">● 演示数据库</span></div>
+    <div class="notice"><strong>先体验一份演示报表</strong><span>样例下单日期集中在 2026 年 10 月。买家可查本人 3 笔订单，客服仅 A1001，仓库仅 A1002。金额为演示值。</span></div>
+    <form class="filter-card" @submit.prevent="generate">
+      <div class="section-heading"><h2>查询条件</h2><span class="muted">{{ account ? account.id+' · '+account.scope : '正在读取身份…' }}</span></div>
+      <div class="filters">
+        <label>开始日期<input type="date" v-model="filter.startDate" required :disabled="busy"></label>
+        <label>结束日期<input type="date" v-model="filter.endDate" required :disabled="busy"></label>
+        <label>订单状态<select v-model="filter.status" :disabled="busy"><option value="">全部状态</option><option value="DELIVERED">已签收</option><option value="PENDING_SHIPMENT">待发货</option><option value="SHIPPED">已发货</option><option value="CANCELLED">已取消</option></select></label>
+        <label>商品关键词<input v-model="filter.productKeyword" placeholder="例如：键盘" maxlength="100" :disabled="busy"></label>
+        <label>汇总方式<select v-model="filter.groupBy" :disabled="busy"><option value="PRODUCT">按商品</option><option value="STATUS">按订单状态</option><option value="DAY">按下单日期</option></select></label>
+      </div>
+      <div class="filter-footer"><span class="muted">按下单日期查询，包含首尾日期；单次最多 366 天、10,000 笔订单。</span><div><button type="button" @click="reset" :disabled="busy">重置条件</button><button class="primary" :disabled="busy">{{ busy ? '正在读取…' : '查询并生成报表' }}</button></div></div>
+    </form>
+    <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="busy" class="loading" role="status">正在加载报表，请稍候…</p>
+    <template v-if="report">
+      <section class="result-heading"><div><h2>报表结果</h2><p class="muted">{{ report.filter.startDate }} 至 {{ report.filter.endDate }} · {{ statusLabel(report.filter.status) }} · {{ report.filter.productKeyword || '全部商品' }} · {{ groupLabel(report.filter.groupBy) }}</p><p class="muted">生成于 {{ time(report.createdAt) }}（北京时间） · {{ report.scope }}</p></div><button class="primary" @click="download" :disabled="busy || downloading">{{ downloading?'正在下载…':'下载完整 Excel ↓' }}</button></section>
+      <p v-if="dirty" class="changed">查询条件已修改，下方仍为上次生成的快照。点击“查询并生成报表”更新结果。</p>
+      <div class="metrics"><article><span>匹配订单</span><strong>{{ report.summary.orderCount }}<small> 笔</small></strong></article><article><span>商品件数</span><strong>{{ report.summary.quantity }}<small> 件</small></strong></article><article><span>订单总金额</span><strong><small>¥ </small>{{ money(report.summary.totalAmount) }}</strong></article></div>
+      <section class="table-card"><div class="section-heading"><h2>{{ groupLabel(report.filter.groupBy) }}汇总</h2><span class="muted">对全部匹配订单统计</span></div>
+        <div class="table-scroll"><table><thead><tr><th>{{ dimension(report.filter.groupBy) }}</th><th class="number">订单数</th><th class="number">商品件数</th><th class="number">金额（元）</th></tr></thead><tbody><tr v-for="group in report.groups" :key="group.name"><td>{{ group.name }}</td><td class="number">{{ group.orderCount }}</td><td class="number">{{ group.quantity }}</td><td class="number">{{ money(group.totalAmount) }}</td></tr><tr v-if="!report.groups.length"><td colspan="4" class="empty">当前条件没有匹配订单，可调整日期、状态或关键词后重试。</td></tr></tbody></table></div>
+      </section>
+      <section class="table-card"><div class="section-heading"><h2>订单明细</h2><span class="muted">Excel 包含全部 {{ report.summary.orderCount }} 笔订单</span></div>
+        <div class="table-scroll"><table><thead><tr><th>订单号</th><th>商品</th><th class="number">件数</th><th class="number">订单金额（元）</th><th>状态</th><th>下单日期</th></tr></thead><tbody><tr v-for="row in report.rows" :key="row.orderNumber"><td class="order-id">{{ row.orderNumber }}</td><td>{{ row.product }}</td><td class="number">{{ row.quantity }}</td><td class="number">{{ money(row.amount) }}</td><td><span :class="['status',row.status==='DELIVERED'?'delivered':'']">{{ statusLabel(row.status) }}</span></td><td>{{ row.orderedOn }}</td></tr><tr v-if="!report.rows.length"><td colspan="6" class="empty">没有匹配的订单</td></tr></tbody></table></div>
+        <div class="pagination"><label>每页 <select v-model.number="pageSize" @change="changeSize" :disabled="busy"><option :value="2">2</option><option :value="10">10</option><option :value="20">20</option><option :value="100">100</option></select> 条</label><div><button @click="loadPage(report.page-1)" :disabled="busy || report.page===0">上一页</button><span>第 {{ report.page+1 }} / {{ Math.max(1,Math.ceil(report.summary.orderCount/report.size)) }} 页</span><button @click="loadPage(report.page+1)" :disabled="busy || !report.hasMore">下一页</button></div></div>
+      </section>
+      <p class="footnote">金额为订单总额，不重复乘商品件数，取消订单是否计入由状态条件决定。当前为演示数据，不代表实收或净销售额。快照生成后不会随源数据变化；更新数据请重新生成。</p>
+    </template>
+    <section v-else-if="!busy" class="start-state"><span>▤</span><h2>从一份订单报表开始</h2><p>已填入演示日期，点击上方按钮即可预览和导出。查询不调用大模型。</p></section>
+  </main><footer>知序 · 数据与模型各司其职</footer>
+</div><p id="report-boot-error" hidden>页面组件加载失败，请刷新重试。</p>
+</body></html>

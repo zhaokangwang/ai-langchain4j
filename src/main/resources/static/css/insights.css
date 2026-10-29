@@ -1,0 +1,17 @@
+.capability-panel{flex-shrink:0;margin:0 32px;border:1px solid #dce5dc;border-radius:12px;background:#fafcf8;font-size:13px;color:#405448}
+.capability-panel>summary{padding:12px 16px;cursor:pointer;font-weight:600;display:list-item;list-style-position:inside}
+.capability-panel>summary span{font-weight:400;float:right;color:#5e7568}
+.capability-content{padding:0 16px 14px;max-height:260px;overflow:auto;overscroll-behavior:contain}
+.capability-content>p{line-height:1.7}.capability-content>button{margin-top:10px;padding:7px 12px;border:1px solid #cbd9cf;border-radius:7px;background:white;color:#166b53;cursor:pointer}
+.capability-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.capability-grid article{padding:12px;border:1px solid #e0e7de;border-radius:8px;background:#fff;min-width:0}
+.capability-grid code{display:block;font-size:11px;margin-top:4px;overflow-wrap:anywhere;color:#68796b}
+.capability-grid p{margin:8px 0 0;line-height:1.6}
+.insight-muted{color:#737d72;font-size:12px}.execution-insight{padding:12px 14px;margin:10px 0;border:1px solid #dce5dc;border-radius:10px;background:#f8faf5;line-height:1.8;font-size:13px;overflow-wrap:anywhere}
+.execution-insight p{margin:6px 0}.execution-insight strong{margin-right:6px;font-weight:600;color:#3c5849}
+.insight-mode{color:#166b53;font-weight:600}.skill-chip{display:inline-block;border:1px solid #d6e2d6;border-radius:5px;padding:0 7px;margin:3px 4px 3px 0;background:#fff;color:#41624d;font-size:12px}
+.tool-rejection{flex-basis:100%;white-space:pre-wrap;overflow-wrap:anywhere;max-height:110px;overflow:auto;color:#925d38!important;background:#fff7ef;padding:7px;border-radius:6px}
+.inline-trace .execution-insight{margin-top:12px}.live-tools li{flex-wrap:wrap}
+@media(max-width:650px){.capability-panel{margin:0 12px;font-size:12px}.capability-panel>summary span{float:none;display:block;margin:4px 0 0 15px}.capability-content{max-height:210px}.capability-grid{grid-template-columns:1fr}.execution-insight{padding:9px;font-size:12px}}
+
+.report-entry{display:block;padding:12px 14px;margin:12px 0;color:#166b53;border:1px solid #d6e3db;border-radius:8px;text-decoration:none;font-size:13px}.report-cards a{display:block;margin:12px 0;padding:14px 16px;background:#edf5ef;color:#166b53;border:1px solid #cfe1d4;border-radius:8px;text-decoration:none;font-size:13px}

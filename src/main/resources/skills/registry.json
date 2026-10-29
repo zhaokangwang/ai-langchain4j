@@ -1,0 +1,160 @@
+[
+  {
+    "name": "order-report",
+    "category": "report",
+    "description": "按下单日期、状态和商品筛选数据库演示订单，生成明细、汇总和 Excel 报表",
+    "notFor": ["执行任意 SQL", "查询权限之外的数据", "退款或修改订单"],
+    "allowedRoles": ["BUYER", "CUSTOMER_SERVICE", "WAREHOUSE"],
+    "allowedTools": ["queryOrderReport"]
+  },
+  {
+    "name": "order-query",
+    "category": "order",
+    "description": "查询可访问订单的商品和状态",
+    "notFor": [
+      "物流轨迹",
+      "退款进度"
+    ],
+    "allowedRoles": [
+      "BUYER",
+      "CUSTOMER_SERVICE"
+    ],
+    "allowedTools": [
+      "findMyOrders",
+      "getMyOrderDetails"
+    ]
+  },
+  {
+    "name": "logistics-tracking",
+    "category": "logistics",
+    "description": "查询已发货订单的承运方和物流信息",
+    "notFor": [
+      "退款进度",
+      "退货资格审核"
+    ],
+    "allowedRoles": [
+      "BUYER",
+      "CUSTOMER_SERVICE"
+    ],
+    "allowedTools": [
+      "findMyOrders",
+      "getMyOrderDetails"
+    ]
+  },
+  {
+    "name": "delivery-exception-guide",
+    "category": "logistics",
+    "description": "对未收到货或物流停滞提供处理建议",
+    "notFor": [
+      "仓库缺货",
+      "执行赔付"
+    ],
+    "allowedRoles": [
+      "BUYER",
+      "CUSTOMER_SERVICE"
+    ],
+    "allowedTools": [
+      "findMyOrders",
+      "getMyOrderDetails"
+    ]
+  },
+  {
+    "name": "return-policy-guide",
+    "category": "after-sales",
+    "description": "为买家说明退货条件和所需材料",
+    "notFor": [
+      "客服工单审核",
+      "退款进度"
+    ],
+    "allowedRoles": [
+      "BUYER",
+      "CUSTOMER_SERVICE"
+    ],
+    "allowedTools": [
+      "findMyOrders",
+      "getMyOrderDetails"
+    ]
+  },
+  {
+    "name": "after-sales-review",
+    "category": "after-sales",
+    "description": "对已分配售后工单给出审核建议",
+    "notFor": [
+      "买家政策咨询",
+      "实际批准或退款"
+    ],
+    "allowedRoles": [
+      "CUSTOMER_SERVICE"
+    ],
+    "allowedTools": [
+      "getAssignedAfterSalesTicket",
+      "getMyOrderDetails"
+    ]
+  },
+  {
+    "name": "after-sales-material-check",
+    "category": "after-sales",
+    "description": "检查已分配售后工单缺少的材料",
+    "notFor": [
+      "退货最终批准",
+      "买家退款进度"
+    ],
+    "allowedRoles": [
+      "CUSTOMER_SERVICE"
+    ],
+    "allowedTools": [
+      "getAssignedAfterSalesTicket",
+      "getMyOrderDetails"
+    ]
+  },
+  {
+    "name": "refund-progress-query",
+    "category": "refund",
+    "description": "查询已有退款记录的处理进度",
+    "notFor": [
+      "判断退货资格",
+      "执行退款"
+    ],
+    "allowedRoles": [
+      "BUYER",
+      "CUSTOMER_SERVICE"
+    ],
+    "allowedTools": [
+      "getAccessibleRefundProgress",
+      "findMyOrders",
+      "getMyOrderDetails"
+    ]
+  },
+  {
+    "name": "warehouse-stock-check",
+    "category": "warehouse",
+    "description": "检查所属仓库模拟库存及缺货情况",
+    "notFor": [
+      "其他仓库",
+      "买家售后"
+    ],
+    "allowedRoles": [
+      "WAREHOUSE"
+    ],
+    "allowedTools": [
+      "getWarehouseStock",
+      "getMyOrderDetails"
+    ]
+  },
+  {
+    "name": "shipment-exception-review",
+    "category": "warehouse",
+    "description": "分析所属仓库订单未发货的原因",
+    "notFor": [
+      "快递运输异常",
+      "执行发货"
+    ],
+    "allowedRoles": [
+      "WAREHOUSE"
+    ],
+    "allowedTools": [
+      "getWarehouseStock",
+      "getMyOrderDetails"
+    ]
+  }
+]

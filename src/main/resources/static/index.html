@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="通过自然对话查询模拟订单、咨询售后，学习 LangChain4j 技能调用。">
+  <title>知序 · AI 客服助手</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23166b53'/%3E%3Ctext x='9' y='29' font-size='27' fill='white'%3E知%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/chat.css">
+  <link rel="stylesheet" href="css/history.css">
+  <link rel="stylesheet" href="css/content.css">
+  <link rel="stylesheet" href="css/insights.css">
+  <script defer src="vendor/vue.global.prod.js"></script>
+  <script defer src="vendor/marked.umd.js"></script>
+  <script defer src="vendor/purify.min.js"></script>
+  <script defer src="js/content.js"></script>
+  <script defer src="js/api.js"></script>
+  <script defer src="js/insights.js"></script>
+  <script defer src="js/chat.js"></script>
+</head>
+<body>
+<div id="app" v-cloak class="workspace">
+  <aside :class="['sidebar', { 'mobile-open': sidebarOpen }]">
+    <a class="brand" href="./" aria-label="知序首页"><span class="brand-mark">知</span><span>知序<span class="brand-sub">AI SERVICE DESK</span></span></a>
+    <button class="new-chat" @click="newConversation" :disabled="pending || changing"><span aria-hidden="true">＋</span> 新建会话 <span class="new-arrow" aria-hidden="true">↗</span></button>
+    <a class="report-entry" href="reports.html">▤ 订单报表与 Excel 导出 ↗</a>
+    <button class="mobile-history" @click="sidebarOpen = !sidebarOpen" :aria-expanded="sidebarOpen">历史会话</button>
+    <div class="side-section history-section">
+      <div class="history-heading"><span class="eyebrow">会话记录</span><button @click="refreshList()" :disabled="listLoading" aria-label="刷新会话列表">↻</button></div>
+      <div class="history-tabs"><button @click="filterList('ACTIVE')" :class="{selected:listStatus==='ACTIVE'}">最近</button><button @click="filterList('ARCHIVED')" :class="{selected:listStatus==='ARCHIVED'}">已归档</button></div>
+      <p v-if="historyError" class="history-error" role="alert">{{ historyError }}</p>
+      <div class="history-list"><button v-for="item in conversations" :key="item.id" :class="['history-item',{selected:item.id===conversationId}]" @click="openConversation(item.id)" :disabled="pending || changing"><span>{{ item.title }}</span><small>{{ time(item.updatedAt) }}</small></button><p v-if="!conversations.length && !listLoading && !historyError" class="side-hint">{{ listStatus==='ACTIVE'?'还没有会话，从一个问题开始。':'暂无归档会话。' }}</p></div>
+      <button v-if="listMore" class="list-more" @click="refreshList(true)" :disabled="listLoading">加载更多会话</button><p v-if="listLoading" class="side-hint" role="status">正在加载…</p>
+    </div>
+    <div class="sidebar-bottom"><div class="demo-label"><span class="dot"></span> 模拟业务环境</div><p>订单查询与售后建议仅供学习，<br>不会创建申请或执行退款。</p><a href="swagger-ui.html" target="_blank" rel="noopener">查看接口文档 <span aria-hidden="true">↗</span></a><div class="profile"><span class="profile-avatar">D</span><div>{{ roleLabel(capabilities?.account?.role) }}<small>{{ capabilities?.account?.id || '等待读取后端身份' }}</small></div><span class="profile-tag">DEMO</span></div></div>
+  </aside>
+  <main class="main-panel">
+    <header class="topbar"><div class="current-heading"><span class="top-title">客服助手</span><span class="top-divider">/</span><span class="top-subtitle" :title="current?.title">{{ current?.title || '新的开始' }}</span></div><div class="conversation-actions"><label class="stream-toggle"><input type="checkbox" v-model="streamMode" :disabled="pending">实时回复</label><template v-if="current"><button @click="renameConversation" :disabled="pending || capabilityLoading || historyLoading || changing">重命名</button><button @click="toggleArchive" :disabled="pending || capabilityLoading || historyLoading || changing">{{ current.status==='ARCHIVED'?'恢复会话':'归档' }}</button></template><span class="environment"><span class="dot"></span> 学习演示</span></div></header>
+    <details class="capability-panel" :open="capabilitiesOpen" @toggle="capabilitiesOpen=$event.target.open">
+      <summary>身份与授权技能 <span v-if="capabilities">{{ roleLabel(capabilities.account.role) }} · {{ capabilities.skills.length }} 个技能</span><span v-else>{{ capabilityLoading?'正在读取…':'身份未确认' }}</span></summary>
+      <div class="capability-content"><p v-if="capabilityLoading" role="status">正在读取后端身份与授权技能…</p><p v-if="capabilityError" role="alert" class="history-error">{{ capabilityError }}</p>
+        <template v-if="capabilities"><p><strong>{{ roleLabel(capabilities.account.role) }} · {{ capabilities.account.id }}</strong><br>数据范围：{{ capabilities.account.scope }}</p>
+          <p class="insight-muted">身份由后端启动配置指定。页面不提供提权或角色切换；切换启动账号并重启后，可刷新能力清单。</p>
+          <div class="capability-grid"><article v-for="skill in capabilities.skills" :key="skill.name"><div><strong>{{ skillLabel(skill.name) }}</strong><code>{{ skill.name }}</code></div><p>{{ skill.description }}</p><p class="insight-muted">不适用：{{ skill.notFor.join('、') }}</p><p class="insight-muted">可用工具：{{ skill.allowedTools.map(toolLabel).join('、') }}</p></article></div>
+        </template><button @click="refreshCapabilities" :disabled="capabilityLoading || pending">{{ capabilityLoading?'读取中…':'刷新身份与技能' }}</button>
+      </div>
+    </details>
+    <section ref="scrollArea" class="conversation" @scroll="handleScroll">
+      <p v-if="historyLoading" class="history-loading" role="status">正在恢复会话记录…</p>
+      <div v-else-if="!messages.length" class="welcome">
+        <div class="welcome-badge"><span class="spark" aria-hidden="true">✳</span> 让服务，像对话一样自然</div>
+        <h1>你好，有什么可以帮你？</h1>
+        <p class="welcome-description">根据当前身份查询业务、获取建议，或聊聊 Java 开发。<br>能力与数据范围可在上方展开查看。</p>
+        <div class="suggestions"><button v-for="item in examples" :key="item.title" class="suggestion" @click="useExample(item.message)"><span class="card-icon" aria-hidden="true">{{ item.icon }}</span><strong>{{ item.title }}<span aria-hidden="true">↗</span></strong><span class="card-description">{{ item.description }}</span></button></div>
+        <div class="welcome-footnote"><span aria-hidden="true">◎</span> 可以接着追问，助手会结合当前会话理解你的意思。</div>
+      </div>
+      <div v-else class="message-list" role="log" aria-label="聊天记录" aria-live="polite" aria-relevant="additions text">
+        <button v-if="hasOlder" class="older-messages" @click="loadOlder" :disabled="olderLoading || pending">{{ olderLoading?'正在加载…':'加载更早的消息' }}</button>
+        <article v-for="message in messages" :key="message.id" :class="['message', message.role]">
+          <div :class="['avatar', message.role]" aria-hidden="true">{{ message.role === 'user' ? '你' : '知' }}</div>
+          <div class="message-content"><div class="message-label">{{ message.role === 'user' ? '你' : '知序助手' }}<span v-if="message.status && message.status!=='COMPLETED'" class="failed-label">{{ statusLabel(message.status) }}</span><span v-else-if="message.failed" class="failed-label">发送失败</span></div>
+            <p v-if="message.incomplete" class="incomplete-note">未完成片段 · 未加入对话上下文</p><div v-if="message.role==='assistant'" class="bubble markdown-body" v-markdown="message.content"></div><div v-else class="bubble">{{ message.content }}</div>
+            <div class="message-actions"><button v-if="message.role==='assistant'" @click="copyAnswer(message)">{{ copiedAnswer===message.id?'已复制':'复制回答' }}</button><button v-if="message.requestId" @click="showRun(message.requestId)">查看执行记录</button><button v-if="message.role==='user' && message.status==='FAILED' && current?.status!=='ARCHIVED'" @click="retryStored(message)" :disabled="pending || historyLoading">重试本条</button><span v-if="message.status==='INTERRUPTED'">上次执行已中断，请确认后以新消息重新发送。</span><button v-if="message.status==='RUNNING' && !pending" @click="openConversation(conversationId)">刷新状态</button></div>
+            <div v-if="message.role==='assistant'" class="report-cards"><a v-for="item in reportLinks(message.requestId)" :key="item.id" :href="item.url" target="_blank" rel="noopener">▤ 查看订单报表 · {{ item.count }} 笔订单 · 支持 Excel 下载 ↗</a></div>
+            <details v-if="message.role==='assistant' && message.requestId" class="inline-trace" @toggle="toggleTrace($event,message.requestId)">
+              <summary>本轮路由与工具调用<span v-if="toolTraces[message.requestId]?.loaded"> · {{ toolTraces[message.requestId].tools.length }} 次工具调用</span></summary>
+              <p v-if="toolTraces[message.requestId]?.loading" role="status">正在读取真实执行记录…</p>
+              <p v-else-if="toolTraces[message.requestId]?.error" class="history-error">{{ toolTraces[message.requestId].error }} <button @click="loadTrace(message.requestId)">重试读取</button></p>
+              <template v-else-if="toolTraces[message.requestId]?.loaded"><execution-insight :info="toolTraces[message.requestId].summary"></execution-insight>
+                <p v-if="!toolTraces[message.requestId].tools.length">本轮没有工具执行记录。</p>
+                <ol v-else><li v-for="call in toolTraces[message.requestId].tools" :key="call.id"><strong>{{ toolLabel(call.name) }}</strong><span v-if="call.skillName" class="skill-name">{{ skillLabel(call.skillName) }}</span><span>{{ statusLabel(call.status) }} · {{ call.durationMs==null?'耗时未提供':call.durationMs+' ms' }}</span><p v-if="call.status==='FAILED'" class="tool-rejection">{{ call.resultText || call.errorType || '执行未成功，请查看详细记录。' }}</p></li></ol>
+              </template>
+            </details>
+          </div>
+        </article>
+        <article v-if="pending" class="message assistant"><div class="avatar assistant" aria-hidden="true">知</div><div class="message-content"><div class="message-label">知序助手 · {{ streamMode?'实时生成':'普通模式' }}</div><div class="waiting" role="status"><span class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>{{ liveStage || '正在处理你的问题' }}<span class="elapsed">{{ elapsed }}s</span></div><p class="waiting-note">{{ streamMode?'仅展示实际收到的模型文本与工具事件，最终回答以保存成功为准。':'可能需要多次模型和工具调用，请稍候。' }}</p><execution-insight v-if="liveAuthorization || liveRouting" :info="liveInsight()"></execution-insight><ol v-if="liveSteps.length" class="live-tools"><li v-for="step in liveSteps" :key="step.id"><strong>{{ toolLabel(step.name) }}</strong><span v-if="step.skillName">{{ step.skillName }}</span><span>{{ statusLabel(step.status) }}{{ step.durationMs==null?'':' · '+step.durationMs+' ms' }}</span></li></ol><div v-if="liveText" class="bubble markdown-body live-answer" v-markdown="liveText"></div></div></article>
+      </div>
+    </section>
+    <button v-if="showLatest" class="jump-latest" @click="jumpLatest">↓ 回到最新消息</button>
+    <div class="composer-region">
+      <div v-if="error" class="error-banner" role="alert"><span>{{ error }}</span><button v-if="failedAttempt" :disabled="pending" @click="retry">重试</button></div>
+      <div v-if="current?.status==='ARCHIVED'" class="archive-notice">此会话已归档，记录仍保留。点击上方“恢复会话”后可继续对话。</div>
+      <form class="composer" @submit.prevent="send"><label class="sr-only" for="message-input">输入你的问题</label><textarea id="message-input" ref="inputElement" v-model="draft" rows="3" maxlength="4000" :disabled="pending || capabilityLoading || historyLoading || changing || current?.status==='ARCHIVED'" placeholder="说说你的问题，例如：我的键盘坏了，想申请退货…" @keydown="onKeydown"></textarea><div class="composer-toolbar"><span class="input-hint">Enter 发送 <span>·</span> Shift + Enter 换行</span><div class="send-actions"><span class="character-count">{{ draft.length }} / 4000</span><button v-if="pending && streamMode" type="button" class="stop-generation" :disabled="stopRequested" @click="stopGeneration">{{ stopRequested?'正在停止':'停止生成' }}</button><button v-else class="send-button" type="submit" :disabled="pending || capabilityLoading || historyLoading || changing || current?.status==='ARCHIVED' || !draft.trim()" aria-label="发送消息"><span>{{ pending ? '处理中' : '发送' }}</span><span aria-hidden="true">↑</span></button></div></div></form>
+      <p class="disclaimer">记录保存在本机数据库，刷新后自动恢复最近会话。AI 回答仅供参考，模型仅使用最近 6 个成功回合。</p>
+    </div>
+  </main>
+  <div v-if="copyNotice" class="copy-toast" role="status">{{ copyNotice }}</div>
+  <div v-if="detailOpen" class="record-overlay" @click.self="closeDetail" @keydown.esc="closeDetail">
+    <section ref="detailPanel" class="record-panel" role="dialog" aria-modal="true" aria-label="执行记录" tabindex="-1" @keydown.tab="trapDetail">
+      <header><div><span class="eyebrow">EXECUTION RECORD</span><h2>本次请求的执行记录</h2></div><button @click="closeDetail" aria-label="关闭执行记录">×</button></header>
+      <p v-if="detailLoading" role="status">正在加载执行记录…</p><p v-if="detailError" class="history-error" role="alert">{{ detailError }}</p>
+      <template v-if="runDetail && !detailLoading && !detailError">
+        <div class="run-summary"><span>{{ statusLabel(runDetail.status) }}</span><span>总计 {{ runDetail.attemptCount }} 次尝试</span><span v-if="runDetail.durationMs!=null">最近尝试耗时 {{ runDetail.durationMs }} ms</span></div>
+        <p class="request-id">请求 ID：{{ runDetail.requestId }}</p><label class="attempt-selector">查看第 <input type="number" min="1" :max="runDetail.attemptCount" :value="runDetail.selectedAttempt" @change="showRun(runDetail.requestId, Number($event.target.value))"> 次尝试</label>
+        <p v-if="runDetail.errorType" class="history-error">最近错误：{{ runDetail.errorType }}</p>
+        <h3>本次尝试的身份与路由</h3><execution-insight :info="runSummary"></execution-insight>
+        <h3>模型调用 <span>{{ runDetail.models.length }}</span></h3><p v-if="!runDetail.models.length" class="record-muted">本次尝试尚无模型调用记录。</p>
+        <details v-for="call in runDetail.models" :key="call.id" class="record-card"><summary>第 {{ call.round }} 轮 · {{ call.modelName || '模型名未返回' }} <span>{{ statusLabel(call.status) }}</span></summary><div class="record-meta">耗时 {{ call.durationMs==null?'未完成':call.durationMs+' ms' }} · Token {{ call.totalTokens==null?'未提供':call.totalTokens }}</div><p v-if="call.errorType">错误：{{ call.errorType }}</p><h4>模型返回</h4><pre>{{ pretty(call.responseJson) }}</pre><details><summary>输入消息与工具定义</summary><pre>{{ pretty(call.requestJson) }}</pre></details></details>
+        <h3>工具与技能 <span>{{ runDetail.tools.length }}</span></h3><p v-if="!runDetail.tools.length" class="record-muted">本次尝试未执行工具。</p>
+        <details v-for="call in runDetail.tools" :key="call.id" class="record-card"><summary>第 {{ call.round }} 轮 · {{ toolLabel(call.name) }} <span>{{ statusLabel(call.status) }}</span></summary><div class="record-meta">{{ call.durationMs==null?'执行未完成':call.durationMs+' ms' }}</div><p v-if="call.skillName">技能：{{ call.skillName }}</p><p v-if="call.skillSha256" class="request-id">内容 SHA-256：{{ call.skillSha256 }}</p><h4>参数</h4><pre>{{ pretty(call.argumentsJson) }}</pre><h4>实际结果</h4><pre>{{ pretty(call.resultText) }}</pre></details>
+        <h3>最近操作记录（所有尝试）</h3><ul class="event-list"><li v-for="(event,index) in runDetail.events" :key="index"><span>{{ event.type }}{{ event.attemptNo?' · 第 '+event.attemptNo+' 次尝试':'' }}</span><small>{{ time(event.createdAt) }}</small><p>{{ event.details }}</p></li></ul>
+      </template>
+    </section>
+  </div>
+</div>
+<noscript><p class="boot-error">请启用 JavaScript 后使用聊天页面。</p></noscript>
+<p id="boot-error" class="boot-error" hidden>页面组件加载失败，请检查本地 Vue 文件并刷新重试。</p>
+</body>
+</html>

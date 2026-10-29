@@ -1,0 +1,49 @@
+app:
+  demo:
+    # buyer / service / warehouse；启动时确定，不允许聊天内容或请求头切换角色。
+    account: ${DEMO_ACCOUNT:service}
+
+server:
+  # 本机 Windows 保留了 7981–8080，使用可覆盖的替代端口。
+  port: ${SERVER_PORT:18080}
+
+spring:
+  datasource:
+    # 相对于启动工作目录；可通过 CHAT_DB_PATH 指定绝对路径（不含 .mv.db 后缀）。
+    url: jdbc:h2:file:${CHAT_DB_PATH:./data/customer-service};DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ${CHAT_DB_PASSWORD:}
+  flyway:
+    enabled: true
+  sql:
+    init:
+      mode: never
+  application:
+    name: ai-langchain4j
+
+springdoc:
+  paths-to-match: /api/**
+  swagger-ui:
+    path: /swagger-ui.html
+    default-models-expand-depth: -1
+    display-request-duration: true
+    disable-swagger-default-url: true
+
+langchain4j:
+  open-ai:
+    chat-model:
+      # DeepSeek 兼容 OpenAI 协议，因此继续使用 open-ai starter。
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      model-name: ${DEEPSEEK_MODEL:deepseek-flash}
+      timeout: 60s
+      max-retries: 0
+      log-requests: false
+      log-responses: false
+    streaming-chat-model:
+      api-key: ${langchain4j.open-ai.chat-model.api-key}
+      base-url: ${langchain4j.open-ai.chat-model.base-url}
+      model-name: ${langchain4j.open-ai.chat-model.model-name}
+      timeout: 60s
+      log-requests: false
+      log-responses: false

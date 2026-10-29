@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE import-control PUBLIC
+    "-//Checkstyle//DTD ImportControl Configuration 1.4//EN"
+    "https://checkstyle.org/dtds/import_control_1_4.dtd">
+<import-control pkg="com.example.ai" strategyOnMismatch="allowed">
+    <!-- DTOs live in business packages; only repositories access JDBC. -->
+    <subpackage name="controller">
+        <disallow pkg="java.sql"/>
+        <disallow pkg="javax.sql"/>
+        <disallow pkg="org.springframework.jdbc"/>
+        <disallow pkg="com.example.ai.repository"/>
+        <disallow pkg="dev.langchain4j"/>
+        <disallow pkg="com.example.ai.model"/>
+        <disallow pkg="com.example.ai.tool"/>
+        <disallow pkg="com.example.ai.skill"/>
+        <disallow pkg="com.example.ai.security"/>
+    </subpackage>
+    <subpackage name="service">
+        <disallow pkg="java.sql"/>
+        <disallow pkg="javax.sql"/>
+        <disallow pkg="org.springframework.jdbc"/>
+        <disallow pkg="com.example.ai.controller"/>
+    </subpackage>
+    <subpackage name="model">
+        <disallow pkg="java.sql"/>
+        <disallow pkg="javax.sql"/>
+        <disallow pkg="org.springframework.jdbc"/>
+        <disallow pkg="com.example.ai.controller"/>
+        <disallow pkg="com.example.ai.service"/>
+    </subpackage>
+    <subpackage name="report">
+        <disallow pkg="java.sql"/>
+        <disallow pkg="javax.sql"/>
+        <disallow pkg="org.springframework.jdbc"/>
+        <disallow pkg="com.example.ai.controller"/>
+    </subpackage>
+    <subpackage name="repository">
+        <disallow pkg="com.example.ai.controller"/>
+        <disallow pkg="com.example.ai.service"/>
+        <disallow pkg="com.example.ai.model"/>
+    </subpackage>
+    <subpackage name="skill">
+        <disallow pkg="java.sql"/>
+        <disallow pkg="javax.sql"/>
+        <disallow pkg="org.springframework.jdbc"/>
+        <disallow pkg="com.example.ai.controller"/>
+        <disallow pkg="com.example.ai.repository"/>
+    </subpackage>
+    <subpackage name="tool">
+        <disallow pkg="java.sql"/>
+        <disallow pkg="javax.sql"/>
+        <disallow pkg="org.springframework.jdbc"/>
+        <disallow pkg="com.example.ai.controller"/>
+        <disallow pkg="com.example.ai.repository"/>
+    </subpackage>
+</import-control>
