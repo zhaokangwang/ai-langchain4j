@@ -1,5 +1,7 @@
 package com.example.ai;
 
+import org.springframework.context.annotation.Import;
+
 import com.example.ai.repository.ChatHistoryRepository;
 import com.example.ai.service.CustomerChatService;
 
@@ -25,6 +27,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties="langchain4j.open-ai.chat-model.api-key=test-key-not-used")
 @AutoConfigureMockMvc
+@Import(TestAuthenticatedRequests.class)
+@WithBusinessIdentity
 class HistoryIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired CustomerChatService chat;

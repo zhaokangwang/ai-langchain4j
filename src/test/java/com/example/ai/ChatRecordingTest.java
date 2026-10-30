@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(properties = "langchain4j.open-ai.chat-model.api-key=test-key-not-used")
+@WithBusinessIdentity
 class ChatRecordingTest {
     @Autowired CustomerChatService service;
     @Autowired ChatHistoryRepository history;
@@ -134,7 +135,8 @@ class ChatRecordingTest {
         });
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            var first = executor.submit(() -> service.chat(conversation, "问题", request));
+            var captured = service.prepareChat(conversation, "问题", request, null);
+            var first = executor.submit(captured::get);
             assertThat(entered.await(10, TimeUnit.SECONDS)).isTrue();
             assertThatThrownBy(() -> service.chat(conversation, "问题", request)).isInstanceOf(ResponseStatusException.class);
             assertThatThrownBy(() -> service.chat(conversation, "另一个问题", id())).isInstanceOf(ResponseStatusException.class);

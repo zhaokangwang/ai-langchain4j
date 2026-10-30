@@ -9,18 +9,21 @@ com.example.ai
 ├── chat/        共享聊天请求/响应 record
 ├── aftersales/  售后请求、上下文和响应 record
 ├── history/     历史查询及修改的共享契约
+├── account/     账号内部记录；HTTP 响应另行定义
 ├── report/      报表业务、导出及共享数据契约
 ├── service/     聊天编排、受控工具执行、售后、历史及能力服务
 ├── repository/  聊天状态、历史查询、报表和执行审计的 JDBC 持久化
 ├── model/       大模型适配、调用审计、流式兼容和旧 AI Service 示例
 ├── skill/       技能注册、业务路由、单次请求的技能执行范围
 ├── tool/        受控业务工具和模拟数据
-├── security/    后端演示身份及数据范围规则
+├── security/    Session 有效性校验、登录角色快照及共享数据范围规则
 ├── stream/      SSE 连接执行控制与取消状态
-└── config/      OpenAPI 配置
+└── config/      OpenAPI、HTTP 安全链、密码编码与管理员启动初始化配置
 ```
 
 请求由 Controller 进入 Service，再由 Repository 访问数据库。跨层共享 record 按业务归入 chat、aftersales、history、report；Service/Repository 不再反向引用 Controller 内部类型。工具自身的返回 record 仍可随工具保留，不增加全局杂项 DTO 包。
+
+账号请求/响应及内部记录归入 account。AuthenticationController 负责登录会话边界，AccountAdministrationController 负责管理接口绑定；AuthenticationService 处理登录和本人改密，AccountAdministrationService 编排管理事务，AccountRepository 承担账号 SQL。AccountSessionAccess 复用账号有效性校验，不反向调用 Service。AccountSessionFilter 为请求建立 BusinessIdentitySnapshot，DemoIdentity 从快照取得角色共享分区；CustomerChatService.prepareChat 将快照显式传入 SSE 工作线程并在退出时清理。
 
 CustomerChatService 管理请求/会话锁、授权与路由事件和有界模型循环；ChatToolExecutor 逐次验证工具名称、技能、对象归属与参数，并记录工具结果。SkillRouter 将对象识别、候选召回、报表、归一化、上下文追问及最终决策拆成独立步骤，每次请求的选择状态只存局部对象。
 

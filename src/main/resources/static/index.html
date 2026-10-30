@@ -10,13 +10,16 @@
   <link rel="stylesheet" href="css/history.css">
   <link rel="stylesheet" href="css/content.css">
   <link rel="stylesheet" href="css/insights.css">
+  <link rel="stylesheet" href="css/account-bar.css">
   <script defer src="vendor/vue.global.prod.js"></script>
   <script defer src="vendor/marked.umd.js"></script>
   <script defer src="vendor/purify.min.js"></script>
   <script defer src="js/content.js"></script>
+  <script defer src="js/auth.js"></script>
   <script defer src="js/api.js"></script>
   <script defer src="js/insights.js"></script>
   <script defer src="js/chat.js"></script>
+  <script defer src="js/account-bar.js"></script>
 </head>
 <body>
 <div id="app" v-cloak class="workspace">
@@ -35,12 +38,14 @@
     <div class="sidebar-bottom"><div class="demo-label"><span class="dot"></span> 模拟业务环境</div><p>订单查询与售后建议仅供学习，<br>不会创建申请或执行退款。</p><a href="swagger-ui.html" target="_blank" rel="noopener">查看接口文档 <span aria-hidden="true">↗</span></a><div class="profile"><span class="profile-avatar">D</span><div>{{ roleLabel(capabilities?.account?.role) }}<small>{{ capabilities?.account?.id || '等待读取后端身份' }}</small></div><span class="profile-tag">DEMO</span></div></div>
   </aside>
   <main class="main-panel">
+    <div class="account-bar" data-account-bar><span data-account-name>正在读取登录账号…</span><a href="/admin-accounts.html" data-account-admin hidden>账号管理</a><a href="/account.html">修改密码</a><button type="button" data-logout disabled>退出登录</button><span data-account-error role="alert"></span></div>
     <header class="topbar"><div class="current-heading"><span class="top-title">客服助手</span><span class="top-divider">/</span><span class="top-subtitle" :title="current?.title">{{ current?.title || '新的开始' }}</span></div><div class="conversation-actions"><label class="stream-toggle"><input type="checkbox" v-model="streamMode" :disabled="pending">实时回复</label><template v-if="current"><button @click="renameConversation" :disabled="pending || capabilityLoading || historyLoading || changing">重命名</button><button @click="toggleArchive" :disabled="pending || capabilityLoading || historyLoading || changing">{{ current.status==='ARCHIVED'?'恢复会话':'归档' }}</button></template><span class="environment"><span class="dot"></span> 学习演示</span></div></header>
     <details class="capability-panel" :open="capabilitiesOpen" @toggle="capabilitiesOpen=$event.target.open">
       <summary>身份与授权技能 <span v-if="capabilities">{{ roleLabel(capabilities.account.role) }} · {{ capabilities.skills.length }} 个技能</span><span v-else>{{ capabilityLoading?'正在读取…':'身份未确认' }}</span></summary>
       <div class="capability-content"><p v-if="capabilityLoading" role="status">正在读取后端身份与授权技能…</p><p v-if="capabilityError" role="alert" class="history-error">{{ capabilityError }}</p>
         <template v-if="capabilities"><p><strong>{{ roleLabel(capabilities.account.role) }} · {{ capabilities.account.id }}</strong><br>数据范围：{{ capabilities.account.scope }}</p>
-          <p class="insight-muted">身份由后端启动配置指定。页面不提供提权或角色切换；切换启动账号并重启后，可刷新能力清单。</p>
+          <p v-if="capabilities.actor" class="insight-muted">登录账号：{{ capabilities.actor.username }} · 共享数据分区：{{ capabilities.account.id }}</p>
+          <p class="insight-muted">权限来自登录账号的业务角色。同角色账号共享会话、报表与模拟业务数据；切换角色请退出后登录其他角色账号。</p>
           <div class="capability-grid"><article v-for="skill in capabilities.skills" :key="skill.name"><div><strong>{{ skillLabel(skill.name) }}</strong><code>{{ skill.name }}</code></div><p>{{ skill.description }}</p><p class="insight-muted">不适用：{{ skill.notFor.join('、') }}</p><p class="insight-muted">可用工具：{{ skill.allowedTools.map(toolLabel).join('、') }}</p></article></div>
         </template><button @click="refreshCapabilities" :disabled="capabilityLoading || pending">{{ capabilityLoading?'读取中…':'刷新身份与技能' }}</button>
       </div>

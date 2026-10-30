@@ -1,5 +1,7 @@
 package com.example.ai;
 
+import org.springframework.context.annotation.Import;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -22,6 +24,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "langchain4j.open-ai.chat-model.api-key=test-key-not-used")
 @AutoConfigureMockMvc
+@Import(TestAuthenticatedRequests.class)
+@WithBusinessIdentity
 class AfterSalesIntegrationTest {
     @Autowired MockMvc mvc;
     @MockitoBean ChatModel chatModel;

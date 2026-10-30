@@ -1,12 +1,14 @@
 # Spring Boot + LangChain4j 入门实验
 
+账号登录、管理员账号管理及 `buyer`、`service`、`warehouse` 的 Skill 和业务范围已接入。同角色共享会话、执行记录及报表快照，跨角色访问由后端拦截；SSE 使用独立身份快照并复核账号状态。首次管理员为 `admin/admin`，完成改密后可从 [账号管理页面](http://localhost:18080/admin-accounts.html) 创建三个角色的账号。第五批自动化联调与打包已完成，106 个后端测试、41 项前端测试通过，Checkstyle 0 违规；实际浏览器点击仍受工具环境故障影响。状态和启动验收步骤见 [第五批交付记录](docs/ACCOUNT-DELIVERY.md)。权限与接口详见 [角色共享说明](docs/ROLE-SHARING.md) 和 [账号说明](docs/ACCOUNTS.md)。
+
 代码质量检查：已接入项目定制 Checkstyle，随 Maven 编译和测试自动执行。规则、命令与 IDEA 配置见 [代码质量约束](docs/CODE-QUALITY.md)。
 
 现有后端已完成职责分层整理：SQL 归入 Repository，共享 DTO 归入业务包，聊天工具执行独立，路由复杂度豁免已移除。详见 [重构记录与验证](docs/REFACTORING.md)。
 
-新增：数据库订单报表，可筛选订单、查看汇总与分页明细、下载 Excel，并从聊天生成报表。启动后访问 [报表页面](http://localhost:18080/reports.html)。演示数据集中在 2026 年 10 月，默认客服身份仅可见 A1001。详见 [报表说明与验证](docs/REPORTS.md)。
+新增：数据库订单报表，可筛选订单、查看汇总与分页明细、下载 Excel，并从聊天生成报表。启动后访问 [报表页面](http://localhost:18080/reports.html)。演示数据集中在 2026 年 10 月，客服角色仅可见 A1001，预设管理员的 buyer 角色可见三笔买家订单。详见 [报表说明与验证](docs/REPORTS.md)。
 
-最新进度：多角色技能第三阶段已完成。页面显示当前身份、授权技能、实时业务路由及实际工具执行，历史记录按尝试展示身份/路由摘要，并区分后端直接回复与模型参与。角色仍由后端启动配置指定，默认买家 demo-user。见 [页面与验证步骤](docs/SKILL-UI.md)、[角色权限说明](docs/SKILL-AUTHORIZATION.md) 和 [业务路由说明](docs/SKILL-ROUTING.md)。
+页面显示登录角色、共享数据分区、授权技能、业务路由和实际工具执行，历史记录按尝试保留真实发起账号，并区分后端直接回复与模型参与。角色由登录账号决定，`DEMO_ACCOUNT` 不再控制业务身份。见 [页面与验证步骤](docs/SKILL-UI.md)、[角色权限说明](docs/SKILL-AUTHORIZATION.md) 和 [业务路由说明](docs/SKILL-ROUTING.md)。
 
 本项目使用 Java 17、Spring Boot 3.5.7 和 LangChain4j Spring Boot starter 1.22.0-beta32。版本固定以便复现，starter 的 beta 后缀是其发布版本的一部分。
 
@@ -64,9 +66,11 @@ mvn '-Dmaven.repo.local=.m2/repository' spring-boot:run
 
 在另一个 PowerShell 终端调用：
 
+先按 [账号说明中的 PowerShell 登录步骤](docs/ACCOUNTS.md#powershell-调用) 创建 `$loginSession` 并取得登录后的 `$csrf`。浏览器和 PowerShell 的登录会话相互独立。
+
 ```powershell
 $body = @{ message = '请用一个简单例子解释 Spring Boot 的依赖注入' } | ConvertTo-Json
-Invoke-RestMethod -Uri 'http://localhost:18080/api/chat' -Method Post -ContentType 'application/json; charset=utf-8' -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+Invoke-RestMethod -Uri 'http://localhost:18080/api/chat' -Method Post -WebSession $loginSession -Headers @{$csrf.headerName=$csrf.token} -ContentType 'application/json; charset=utf-8' -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
 ```
 
 返回包含 answer、conversationId、executedTools、requestId；回答内容由真实模型决定。
@@ -75,7 +79,7 @@ Invoke-RestMethod -Uri 'http://localhost:18080/api/chat' -Method Post -ContentTy
 
 ## 5. 使用 Swagger UI 调试
 
-启动应用后打开 http://localhost:18080/swagger-ui.html ，展开“AI 聊天”中的 `POST /api/chat`，点击 **Try it out**，修改示例中的 message，点击 **Execute**，即可查看响应状态、回答和耗时。
+先通过登录页登录并完成初始改密，再打开 http://localhost:18080/swagger-ui.html 。执行 `GET /api/auth/csrf`，将返回的 token 填入 Authorize 的 `csrfToken`；然后展开“AI 聊天”中的 `POST /api/chat`，点击 **Try it out**，修改示例中的 message，点击 **Execute**，即可查看响应状态、回答和耗时。登录或退出后需重新取得 token。
 
 DeepSeek Key 仍通过启动进程的 DEEPSEEK_API_KEY 环境变量配置，不用在 Swagger 页面输入。点击 Execute 会调用真实模型；仅打开文档不会调用模型。模型响应较慢时请等待返回。
 
@@ -164,7 +168,7 @@ OpenAPI JSON 地址为 http://localhost:18080/v3/api-docs ，也可导入 Apifox
 
 技能目录只在系统提示中列出名称与适用条件；模型通过 loadSkill 请求加载文件全文。CustomerTools 使用注册名称映射读取 classpath 文件，不允许任意文件路径。工具调用参数由模型提取，执行由 CustomerChatService 的白名单 switch 完成，不执行任意方法。
 
-当前身份固定为 demo-user，没有登录系统。findMyOrders 和 getMyOrderDetails 在 Java 中过滤订单归属，B2001 属于另一个模拟用户，不能查询。conversationId 仅用于关联对话，不是身份凭证；此项目是单用户本地实验，多用户部署前需接入认证，并按登录用户与会话 ID 共同隔离历史。
+当前身份来自登录账号的角色。findMyOrders 和 getMyOrderDetails 在 Java 中按角色限定订单范围，B2001 对三个角色均不可见。conversationId 仅关联对话，不是身份凭证；会话与报表按角色共享和隔离，暂不按账号隔离。demo-user/demo-service/demo-warehouse 是兼容已有数据的角色分区 ID，实际发起账号另记在授权审计中。
 
 完整会话、消息及模型/工具调用存入 H2 文件库，重启后可用相同 conversationId 继续；模型只接收最近 6 个成功完整回合，较早事实可能需要重新确认。省略 conversationId 会新建会话。每个请求最多 8 次模型调用、每次最多 8 个工具调用，超限返回 502；失败记录仍保存，但不进入模型上下文。requestId 用于重试去重，同一条消息保持不变，下一条消息生成新值。
 

@@ -31,6 +31,7 @@
     <section v-if="info" class="execution-insight" aria-label="身份与业务路由">
       <p class="insight-mode">{{ info.modelLabel }}<span v-if="info.modelCount"> · {{ info.modelCount }} 轮</span></p>
       <p v-if="info.authorization?.account"><strong>本次身份</strong> {{ roleLabel(info.authorization.account.role) }} · {{ info.authorization.account.id }}<br><span class="insight-muted">数据范围：{{ info.authorization.account.scope }}</span></p>
+      <p v-if="info.authorization?.actor"><strong>发起账号</strong> {{ info.authorization.actor.username }}<span class="insight-muted"> · {{ info.authorization.actor.id }}</span></p>
       <template v-if="info.routing"><p><strong>业务判断</strong> {{ info.routing.category ? info.routing.category+' · ' : '' }}{{ info.routing.reason }}</p>
         <p v-if="info.routing.orderNumber || info.routing.ticketNumber"><strong>已确认对象</strong> {{ info.routing.orderNumber }} {{ info.routing.ticketNumber }}</p>
         <p v-if="info.routing.choices?.length"><strong>待选择订单</strong> <span v-for="choice in info.routing.choices" :key="choice.orderNumber">{{ choice.orderNumber }}（{{ choice.product }}） </span></p>

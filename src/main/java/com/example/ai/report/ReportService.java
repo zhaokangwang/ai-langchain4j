@@ -38,6 +38,7 @@ public class ReportService {
     }
 
     public Page create(Filter input) {
+        identity.requireActive(null);
         String reportId = UUID.randomUUID().toString();
         long started = System.nanoTime();
         log.info("[报表生成开始] reportId={} account={} role={} filter={}", reportId, identity.ownerId(), identity.current().role(), input);
@@ -80,6 +81,7 @@ public class ReportService {
         var snapshot = new Snapshot(reportId, System.currentTimeMillis(), filter,
                 identity.current().scope(), true, summarize(rows), groups, List.copyOf(rows));
         try {
+            identity.requireActive(null);
             repository.save(snapshot.reportId(), identity.ownerId(), mapper.writeValueAsString(snapshot), snapshot.createdAt());
         } catch (JsonProcessingException error) { throw new IllegalStateException("无法保存报表", error); }
         log.info("[报表汇总与快照保存完成] reportId={} orderCount={} quantity={} totalAmount={} groupBy={} groupCount={} durationMs={}",
@@ -89,6 +91,7 @@ public class ReportService {
     }
 
     public Snapshot load(String id) {
+        identity.requireActive(null);
         String json = repository.load(id, identity.ownerId()).orElseThrow(() -> {
             log.warn("[报表快照不可访问] reportId={} account={}", id, identity.ownerId());
             return new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到可访问的报表");

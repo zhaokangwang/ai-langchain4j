@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -74,7 +75,19 @@ public class CustomerChatService {
         return chat(id, message, clientRequestId, null);
     }
 
+    public Supplier<ChatResponse> prepareChat(String id, String message, String requestId, ChatStream stream) {
+        tools.identity().requireActive(stream);
+        return tools.identity().bind(() -> chat(id, message, requestId, stream));
+    }
+
+    public String sharedOwnerId() {
+        tools.identity().requireActive(null);
+        return tools.identity().ownerId();
+    }
+
     public ChatResponse chat(String id, String message, String clientRequestId, ChatStream stream) {
+        check(stream);
+        if (stream != null) stream.authorizeWith(tools.identity().accessGuard(stream));
         String requestId = clientRequestId == null ? UUID.randomUUID().toString() : clientRequestId;
         ReentrantLock requestLock = requestLocks[Math.floorMod(requestId.hashCode(), requestLocks.length)];
         if (!requestLock.tryLock()) {
@@ -98,6 +111,7 @@ public class CustomerChatService {
         try {
             var run = history.begin(requestId, requestedId, message, "CHAT");
             if (run.status().equals("COMPLETED")) {
+                check(stream);
                 log.info("[客服请求复用] requestId={} conversationId={} 返回已保存结果，不再调用模型", requestId, conversationId);
                 emit(stream, "accepted", Map.of("requestId", requestId, "conversationId", conversationId, "cached", true));
                 return history.savedResponse(run);
@@ -217,7 +231,7 @@ public class CustomerChatService {
     }
 
     private void authorizationEvent(ChatHistoryRepository.Run run, ChatStream stream) {
-        var authorization = Map.of("account", tools.identity().current(), "skills", tools.registry()
+        var authorization = Map.of("account", tools.identity().current(), "actor", tools.identity().actor(), "skills", tools.registry()
                 .available(tools.identity()).stream().map(SkillRegistry.Skill::name).toList());
         audit.event(run, "AUTHORIZATION", history.json(authorization));
         emit(stream, "accepted", Map.of("requestId", run.requestId(), "conversationId", run.conversationId(), "cached", false));
@@ -245,6 +259,7 @@ public class CustomerChatService {
         if (stream != null) {
             stream.check();
         }
+        tools.identity().requireActive(stream);
     }
 
     private void emit(ChatStream stream, String name, Object data) {

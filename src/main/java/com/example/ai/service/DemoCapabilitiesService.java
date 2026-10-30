@@ -16,7 +16,8 @@ public class DemoCapabilitiesService {
     }
 
     public Map<String, Object> capabilities() {
-        return Map.of("account", identity.current(), "skills", skills.available(identity),
-                "identitySource", "后端启动配置，不接受请求指定角色");
+        identity.requireActive(null);
+        return Map.of("account", identity.current(), "actor", identity.actor(), "skills", skills.available(identity),
+                "identitySource", "已登录账号的业务角色；同角色共享数据，不接受请求指定角色");
     }
 }

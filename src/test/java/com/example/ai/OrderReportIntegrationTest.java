@@ -1,5 +1,7 @@
 package com.example.ai;
 
+import org.springframework.context.annotation.Import;
+
 import com.example.ai.report.ReportModels;
 
 import com.example.ai.report.ReportService;
@@ -29,6 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties="langchain4j.open-ai.chat-model.api-key=test-key-not-used")
 @AutoConfigureMockMvc
+@Import(TestAuthenticatedRequests.class)
+@WithBusinessIdentity
 class OrderReportIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;

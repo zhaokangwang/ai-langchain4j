@@ -45,7 +45,8 @@ public class ChatStreamController {
         response.setHeader("Cache-Control", "no-cache, no-transform");
         response.setHeader("X-Accel-Buffering", "no");
         String requestId = request.requestId() == null ? UUID.randomUUID().toString() : request.requestId();
-        var connection = new Connection();
+        var connection = new Connection(service.sharedOwnerId());
+        var execution = service.prepareChat(request.conversationId(), request.message(), requestId, connection.control);
         if (connections.putIfAbsent(requestId, connection) != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "请求正在实时处理中");
         var emitter = connection.emitter;
         emitter.onError(error -> connection.control.cancel("连接已断开"));
@@ -59,7 +60,7 @@ public class ChatStreamController {
                 }, 15, 15, TimeUnit.SECONDS);
                 try {
                     connection.control.check();
-                    var result = service.chat(request.conversationId(), request.message(), requestId, connection.control);
+                    var result = execution.get();
                     connection.send("done", result);
                 } catch (RuntimeException error) {
                     int status = error instanceof ResponseStatusException http ? http.getStatusCode().value() : error instanceof ChatStream.Interrupted ? 499 : 502;
@@ -78,10 +79,11 @@ public class ChatStreamController {
     }
 
     @PostMapping("/{requestId}/cancel")
-    @Operation(summary = "停止本机演示用户的一次实时生成", description = "尽力取消上游订阅；不撤销已完成的操作或模型费用。不影响原 JSON 接口。")
+    @Operation(summary = "停止当前角色共享范围内的一次实时生成", description = "同角色账号可取消；跨角色与不存在均返回 false。尽力取消上游，不撤销已完成的操作或模型费用。")
     public Map<String, Object> cancel(@PathVariable String requestId) {
         var connection = connections.get(requestId);
-        if (connection == null) return Map.of("requestId", requestId, "cancelRequested", false);
+        String owner = service.sharedOwnerId();
+        if (connection == null || !connection.owner.equals(owner)) return Map.of("requestId", requestId, "cancelRequested", false);
         connection.control.cancel("用户停止生成");
         return Map.of("requestId", requestId, "cancelRequested", true);
     }
@@ -93,6 +95,8 @@ public class ChatStreamController {
     }
 
     private static class Connection {
+        final String owner;
+        Connection(String owner) { this.owner = owner; }
         final SseEmitter emitter = new SseEmitter(600_000L);
         final AtomicBoolean finished = new AtomicBoolean();
         final AtomicLong sequence = new AtomicLong();

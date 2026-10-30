@@ -49,8 +49,9 @@ public class AfterSalesService {
     }
 
     public String review(ReviewRequest request) throws JsonProcessingException {
+        identity.requireActive(null);
         if (identity.current().role()==DemoIdentity.Role.WAREHOUSE)
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"当前演示身份无售后咨询权限");
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"当前角色无售后咨询权限");
         log.info("加载的文件技能用于本次咨询：{}", SKILL_NAME);
         // 规则放入 SystemMessage；外部事实作为 JSON 放入 UserMessage，不拼进系统指令。
         var modelRequest = ChatRequest.builder()
@@ -68,6 +69,7 @@ public class AfterSalesService {
                     callId, response.metadata().modelName(),
                     TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started), answer);
             var result = new ChatResponse(answer, run.conversationId(), java.util.List.of(), callId);
+            identity.requireActive(null);
             history.complete(run, result, java.util.List.of(modelRequest.messages().get(1), response.aiMessage()));
             return answer;
         } catch (RuntimeException exception) {

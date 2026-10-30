@@ -127,7 +127,7 @@ public class ChatHistoryRepository {
 
     public List<ChatMessage> recentContext(String conversation) {
         // 按成功完成顺序而非首次提交顺序：早先失败的请求可能在后续消息之后才被重试成功。
-        List<String> turns = jdbc.queryForList("SELECT r.context_json FROM chat_runs r JOIN chat_messages m ON m.request_id=r.request_id AND m.role='ASSISTANT' WHERE r.conversation_id=? AND r.status='COMPLETED' AND r.context_json IS NOT NULL ORDER BY m.id DESC LIMIT 6", String.class, conversation);
+        List<String> turns = jdbc.queryForList("SELECT r.context_json FROM chat_runs r JOIN conversations c ON c.id=r.conversation_id JOIN chat_messages m ON m.request_id=r.request_id AND m.role='ASSISTANT' WHERE r.conversation_id=? AND c.owner_id=? AND r.status='COMPLETED' AND r.context_json IS NOT NULL ORDER BY m.id DESC LIMIT 6", String.class, conversation, identity.ownerId());
         Collections.reverse(turns);
         List<ChatMessage> messages = new ArrayList<>();
         turns.forEach(json -> messages.addAll(ChatMessageDeserializer.messagesFromJson(json)));

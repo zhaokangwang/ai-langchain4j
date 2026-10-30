@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>修改密码 · 知序</title><link rel="stylesheet" href="css/auth.css">
+  <script defer src="vendor/vue.global.prod.js"></script><script defer src="js/auth.js"></script><script defer src="js/auth-page.js"></script>
+</head>
+<body data-auth-page="password">
+<main id="auth" class="auth-layout" v-cloak>
+  <section class="auth-intro"><a class="auth-brand" href="/">知序<span>AI SERVICE DESK</span></a><div><p class="eyebrow">账号设置</p><h1>为你的账号，<br>设置一个新密码。</h1><p>修改成功后，请使用新密码重新登录。</p></div><span class="intro-foot">知序 · 模拟业务工作台</span></section>
+  <section class="auth-panel"><div class="auth-card"><p class="eyebrow">ACCOUNT SETTINGS</p><h2>{{ account?.passwordChangeRequired ? '设置你的新密码' : '修改密码' }}</h2><p class="muted">{{ account ? '当前账号：'+account.username : '正在读取账号…' }}</p>
+    <p v-if="account?.passwordChangeRequired" class="notice" role="status">首次登录需要先修改初始密码，再进入工作台。</p><p v-if="error" class="form-error" role="alert">{{ error }}</p>
+    <form @submit.prevent="submit">
+      <input v-if="account" type="text" name="username" :value="account.username" autocomplete="username" hidden>
+      <label for="current-password">当前密码<input id="current-password" name="current-password" type="password" v-model="password" autocomplete="current-password" minlength="4" maxlength="72" required :disabled="busy || loading || !account"></label>
+      <label for="new-password">新密码<input id="new-password" name="new-password" type="password" v-model="newPassword" autocomplete="new-password" minlength="4" maxlength="72" required :disabled="busy || loading || !account"></label>
+      <label for="confirmation">确认新密码<input id="confirmation" name="confirmation" type="password" v-model="confirmation" autocomplete="new-password" minlength="4" maxlength="72" required :disabled="busy || loading || !account"></label>
+      <p class="muted password-hint">至少 4 个字符，UTF-8 编码不超过 72 字节。</p><button class="primary" type="submit" :disabled="busy || loading || !account">{{ busy ? '正在保存…' : '保存新密码' }} <span aria-hidden="true">↗</span></button>
+    </form><div class="auth-links"><a v-if="account && !account.passwordChangeRequired" :href="next">返回工作台</a><button type="button" @click="logout" :disabled="busy || loading || !account">退出登录</button></div>
+  </div></section>
+</main><p id="auth-boot-error" class="boot-error" hidden>页面组件加载失败，请刷新重试。</p><noscript><p>请启用 JavaScript 后修改密码。</p></noscript>
+</body></html>

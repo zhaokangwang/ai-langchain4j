@@ -1,10 +1,10 @@
 /* 同源请求：浏览器不接触模型供应商或 API Key。 */
 async function historyRequest(url, options) {
   let response;
-  try { response = await fetch(url, options); }
+  try { response = await window.AuthApi.request(url, options); }
   catch { throw new Error('无法连接后端，请检查服务是否运行。'); }
   if (!response.ok) {
-    const error = new Error(({400:'操作参数无效，请检查后重试。',404:'记录不存在或不可访问。',409:'会话正在处理或已归档，请稍后重试。'})[response.status] || `读取记录失败（HTTP ${response.status}）`);
+    const error = new Error(({400:'操作参数无效，请检查后重试。',401:'登录已过期，请重新登录。',403:'无权操作或请求令牌已过期，请刷新后重试。',404:'记录不存在或不可访问。',409:'会话正在处理或已归档，请稍后重试。'})[response.status] || `读取记录失败（HTTP ${response.status}）`);
     error.status = response.status;
     throw error;
   }
@@ -15,7 +15,7 @@ window.ChatApi = Object.freeze({
   async streamMessage(message, conversationId, requestId, onEvent, signal) {
     let response;
     try {
-      response=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream'},
+      response=await window.AuthApi.request('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream'},
         body:JSON.stringify({message,conversationId,requestId}),signal});
     } catch(error) {
       if(error.name==='AbortError') throw error;
@@ -76,7 +76,7 @@ window.ChatApi = Object.freeze({
     if (requestId) body.requestId = requestId;
     let response;
     try {
-      response = await fetch('/api/chat', {
+      response = await window.AuthApi.request('/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(body)
       });
@@ -85,6 +85,8 @@ window.ChatApi = Object.freeze({
     }
     if (!response.ok) {
       const explanations = {
+        401: '登录已过期，请重新登录。',
+        403: '无权操作或请求令牌已过期，请刷新后重试。',
         400: '输入未通过校验，请检查问题长度或新建会话后重试。',
         409: '请求仍在处理、已中断或请求标识冲突。请稍后重试；若后端已重启，请确认后新建会话再发送。',
         429: '当前演示会话已满，请稍后再试。',

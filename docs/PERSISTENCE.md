@@ -18,7 +18,7 @@
 $env:CHAT_DB_PATH = 'D:/coding/idea/ai-langchain4j/data/customer-service'
 ```
 
-可用 CHAT_DB_PASSWORD 设置数据库密码；首次创建后更改环境变量不会自动更改已有库的密码。默认无密码，仅用于本机单用户实验。应用未开启 H2 Web Console 或 TCP 服务器。
+可用 CHAT_DB_PASSWORD 设置数据库密码；首次创建后更改环境变量不会自动更改已有库的密码。默认无密码，仅用于本机实验。应用未开启 H2 Web Console 或 TCP 服务器。
 一个文件库由一个 Spring Boot 进程打开，停止旧实例后再启动新实例；不要启动两个后端共享此文件。
 Flyway 从 `db/migration` 执行建表迁移，不使用启动清表。后续结构变更新增 V2 等迁移，不修改已经应用的 V1。
 data/ 与数据库文件已忽略，不会提交到 Git。可在后端完全停止后备份 data 目录，不要直接复制运行中的数据库文件。
@@ -27,7 +27,8 @@ data/ 与数据库文件已忽略，不会提交到 Git。可在后端完全停�
 
 | 表 | 内容 |
 | --- | --- |
-| conversations | 演示用户、标题、入口来源、创建/更新时间、状态 |
+| user_accounts | V6 新增账号、密码哈希、角色及管理/启用/待改密标记；支持 Session 登录、本人改密及第三批账号管理 |
+| conversations | 角色共享分区、标题、入口来源、创建/更新时间、状态 |
 | chat_runs | 一条逻辑请求、requestId、原始输入、状态、重试次数、最终响应、完整回合上下文 |
 | chat_messages | 用户输入、最终助手回答；失败请求也保留用户输入，通过关联 chat_runs 查看状态 |
 | model_calls | 每次模型调用的输入消息与工具定义、AI 返回消息、模型名、Token 用量、状态与耗时 |
@@ -105,7 +106,7 @@ SELECT event_type, details, created_at FROM operation_events WHERE request_id = 
 ChatRecordingTest 覆盖失败记录/重试、请求冲突、并发控制、中断恢复、上下文窗口、Token 信息与凭据隔离。
 `node --test scripts/frontend-check.cjs`：验证前端连续会话及重试复用 requestId，不需要真实模型 Key。
 
-当前为启动配置指定账号的本地演示（默认 demo-user），会话查询已按当前账号隔离；这不是正式登录系统。多用户部署前仍需接入认证，历史库不能直接作为公共服务的数据接口开放。
+账号第四批已接入登录角色与共享业务数据。会话、执行记录和报表按 demo-user/demo-service/demo-warehouse 三个角色分区共享，不按账号隔离；新 AUTHORIZATION 审计另记实际账号 actor。旧分区 ID 和数据库迁移保留，详见 [ROLE-SHARING.md](ROLE-SHARING.md)。登录状态不持久化到 H2，重启后需要重新登录。
 
 ## 第三阶段接口
 
@@ -116,7 +117,7 @@ ChatRecordingTest 覆盖失败记录/重试、请求冲突、并发控制、中�
 | PATCH /api/conversations/{id} | 传 title 重命名，或 status=ARCHIVED/ACTIVE 归档/恢复，记录操作事件 |
 | GET /api/chat-runs/{requestId}?attempt=1 | 默认最后一次尝试，可选历史尝试；包含模型与工具，操作事件最多最近 100 条 |
 
-查询仅返回当前后端账号的 CHAT 来源，其他用户或其他来源的记录返回 404。会话分页 size 最多 100，消息分页 size 最多 100。尝试详情一次只加载一轮尝试的调用记录，避免所有重试内容一起返回。
+查询仅返回当前角色分区的 CHAT 来源，其他角色或其他来源的记录返回 404；同角色不同账号可以共享记录。会话分页 size 最多 100，消息分页 size 最多 100。尝试详情一次只加载一轮尝试的调用记录，避免所有重试内容一起返回。
 归档后可读取记录，但不能发送新消息或重试失败请求。可恢复后继续对话。RUNNING 请求存在时更改归档状态返回 409；完成结果的幂等重放仍允许，因为不执行新任务。
 页面能区分失败、中断和进行中状态，失败消息可显式重试；中断消息不会自动重放。另一个标签页中尚在执行的请求可通过“刷新状态”查看，不进行假进度展示。
 重命名与归档事件属于会话级事件，保存在 operation_events；单条请求详情中的事件按 requestId 展示，不包含无 requestId 的会话级事件。

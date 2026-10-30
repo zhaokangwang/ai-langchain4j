@@ -1,5 +1,7 @@
 package com.example.ai;
 
+import org.springframework.context.annotation.Import;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -26,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // 只替换模型边界：Controller、AI Service 代理及提示词组装都是真实实现。
 @SpringBootTest(properties = "langchain4j.open-ai.chat-model.api-key=test-key-not-used")
 @AutoConfigureMockMvc
+@Import(TestAuthenticatedRequests.class)
+@WithBusinessIdentity
 class ChatIntegrationTest {
     @Autowired
     MockMvc mvc;

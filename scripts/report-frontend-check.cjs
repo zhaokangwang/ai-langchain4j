@@ -8,7 +8,7 @@ const filter={startDate:'2026-10-01',endDate:'2026-10-31',status:'',productKeywo
 const page=(number=0)=>({reportId:id,filter:{...filter},rows:[],summary:{orderCount:3,quantity:4,totalAmount:676},groups:[],page:number,size:10,hasMore:false});
 function harness(fetcher,url='http://localhost/reports.html'){
   let state,mount;
-  const window={location:{href:url},history:{replaceState(a,b,value){window.location.href=String(value);}}};
+  const window={AuthApi:{request:fetcher},location:{href:url},history:{replaceState(a,b,value){window.location.href=String(value);}}};
   const Vue={ref:value=>({value}),computed:fn=>({get value(){return fn();}}),onMounted:fn=>{mount=fn;},createApp:options=>({mount(){state=options.setup();}})};
   window.Vue=Vue;
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/main/resources/static/js/reports.js'),'utf8'),{window,Vue,URL,fetch:fetcher,document:{getElementById:()=>({})},setTimeout});

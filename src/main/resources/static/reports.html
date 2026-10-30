@@ -2,15 +2,16 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>订单报表 · 知序</title><link rel="stylesheet" href="css/reports.css">
-  <script defer src="vendor/vue.global.prod.js"></script><script defer src="js/reports.js"></script>
+  <title>订单报表 · 知序</title><link rel="stylesheet" href="css/reports.css"><link rel="stylesheet" href="css/account-bar.css">
+  <script defer src="vendor/vue.global.prod.js"></script><script defer src="js/auth.js"></script><script defer src="js/reports.js"></script><script defer src="js/account-bar.js"></script>
 </head>
 <body>
 <div id="reports" v-cloak>
+  <div class="account-bar" data-account-bar><span data-account-name>正在读取登录账号…</span><a href="/admin-accounts.html" data-account-admin hidden>账号管理</a><a href="/account.html">修改密码</a><button type="button" data-logout disabled>退出登录</button><span data-account-error role="alert"></span></div>
   <header class="site-header"><a class="brand" href="/">知序 <span> / 订单报表</span></a><a href="/">返回客服助手 ↗</a></header>
   <main>
     <div class="page-heading"><div><p class="eyebrow">ORDER REPORT</p><h1>让订单数据，一目了然。</h1><p class="muted">筛选明细、查看汇总，导出同一份数据快照。</p></div><span class="demo-badge">● 演示数据库</span></div>
-    <div class="notice"><strong>先体验一份演示报表</strong><span>样例下单日期集中在 2026 年 10 月。买家可查本人 3 笔订单，客服仅 A1001，仓库仅 A1002。金额为演示值。</span></div>
+    <div class="notice"><strong>先体验一份演示报表</strong><span>样例下单日期集中在 2026 年 10 月。买家角色共享 3 笔订单，客服可查 A1001，仓库可查 A1002；同角色可共享报表快照。金额为演示值。</span></div>
     <form class="filter-card" @submit.prevent="generate">
       <div class="section-heading"><h2>查询条件</h2><span class="muted">{{ account ? account.id+' · '+account.scope : '正在读取身份…' }}</span></div>
       <div class="filters">

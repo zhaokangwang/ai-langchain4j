@@ -85,6 +85,19 @@ test('实时授权、候选和已确认对象来自 SSE，下一轮清空旧路�
   app.draft.value='退款';await app.send();app.draft.value='仓库库存';await app.send();
   app.newConversation();assert.equal(app.liveRouting.value,null);
 });
+
+test('同角色共享分区保持会话，执行摘要保留历史实际账号而非当前登录账号',async()=>{
+  let username='buyer-one';
+  const app=harness(async()=>({answer:'已保存',conversationId:'shared-conversation'}),{
+    capabilities:async()=>({account:{id:'demo-user',role:'BUYER',scope:'买家角色共享订单'},actor:{id:username,username},skills:[]}),
+    run:async()=>({selectedAttempt:1,tools:[],models:[],events:[{type:'AUTHORIZATION',attemptNo:1,
+      details:JSON.stringify({account:{id:'demo-user',role:'BUYER'},actor:{id:'buyer-one',username:'buyer-one',role:'buyer'},skills:[]})}]})
+  });
+  await app.initialize();app.draft.value='解释 Java';await app.send();
+  username='buyer-two';await app.refreshCapabilities();
+  assert.equal(app.conversationId.value,'shared-conversation');assert.equal(app.capabilities.value.actor.username,'buyer-two');
+  await app.showRun('shared-request');assert.equal(app.runSummary.value.authorization.actor.username,'buyer-one');
+});
 test('连续会话使用返回 ID；新建会话清空上下文', async () => {
   const calls = [];
   const app = harness(async (message, id) => { calls.push({ message, id }); return { answer: '回复', conversationId: 'session-1' }; });
@@ -204,6 +217,7 @@ test('Fetch 使用真实接口路径和会话参数，并处理 HTTP 错误', as
     captured = { url, body: JSON.parse(options.body) };
     return { ok: true, json: async () => ({ answer: '回答', conversationId: 'valid-id' }) };
   } });
+  context.window.AuthApi = {request:(...args)=>context.fetch(...args)};
   vm.runInContext(fs.readFileSync(path.join(root, 'api.js'), 'utf8'), context);
   await context.window.ChatApi.sendMessage('问题', null);
   assert.equal(captured.url, '/api/chat');
@@ -256,6 +270,7 @@ test('SSE 解析处理 UTF-8 跨包、CRLF、心跳和最终完成，提前断�
     const chunks=encoder.encode(text);for(let i=0;i<chunks.length;i+=2)controller.enqueue(chunks.slice(i,i+2));controller.close();
   }})});
   const context=vm.createContext({window:{},TextDecoder,Uint8Array,fetch:async(url,options)=>{captured={url,options};return responseFor(content);}});
+  context.window.AuthApi = {request:(...args)=>context.fetch(...args)};
   vm.runInContext(fs.readFileSync(path.join(root,'api.js'),'utf8'),context);
   const result=await context.window.ChatApi.streamMessage('问题','s1','r1',(name,data)=>received.push({name,data}));
   assert.equal(result.answer,'你好');assert.equal(captured.url,'/api/chat/stream');assert.equal(received[1].data.text,'你好');

@@ -40,6 +40,7 @@ public class ChatToolExecutor {
 
     public String executeRecorded(ChatHistoryRepository.Run run, int round, ToolExecutionRequest call, ChatStream stream, SkillExecutionScope scope) {
         if (stream != null) stream.check();
+        tools.identity().requireActive(stream);
         String id = UUID.randomUUID().toString();
         audit.startTool(id, run, round, call.id(), call.name(), call.arguments());
         ToolResult result;
@@ -48,6 +49,7 @@ public class ChatToolExecutor {
             log.info("[客服工具执行开始] requestId={} round={} tool={} arguments={}", run.requestId(), round, call.name(), call.arguments());
             emit(stream, "tool_start", Map.of("id", id, "round", round, "name", call.name()));
             result = execute(call,scope);
+            tools.identity().requireActive(stream);
         }
         catch (RuntimeException error) {
             audit.failTool(id, error instanceof ChatStream.Interrupted ? "INTERRUPTED" : "FAILED", error.getClass().getSimpleName());

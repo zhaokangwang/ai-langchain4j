@@ -64,7 +64,7 @@ public class RecordedStreamingModelClient {
             });
             long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
             while (true) {
-                stream.check();
+                stream.checkAuthorization();
                 Throwable error = failure.get();
                 if (error != null) throw error instanceof RuntimeException runtime ? runtime : new IllegalStateException("模型流失败", error);
                 if (System.nanoTime() > deadline) throw new ChatStream.Interrupted("等待模型流超时");

@@ -1,6 +1,6 @@
 # 第二阶段：会话业务状态、候选技能与工具范围
 
-普通 POST /api/chat 与 POST /api/chat/stream 均已接入。无需修改请求体，原有接口保留。角色仍由启动配置 `--app.demo.account=buyer|service|warehouse` 决定，没有新增请求端切换权限的入口。
+普通 POST /api/chat 与 POST /api/chat/stream 均已接入。无需修改请求体，原有接口保留。角色来自已认证登录账号，业务状态按角色共享会话保存，没有请求端切换权限的入口；SSE 显式传递身份快照，详见 [ROLE-SHARING.md](ROLE-SHARING.md)。
 
 ## 本轮处理
 

@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** 统一聊天使用的模拟只读工具。身份来自后端启动配置，不接受模型传入。 */
+/** 统一聊天使用的模拟只读工具。身份来自已认证的请求快照，不接受模型传入。 */
 @Component
 public class CustomerTools {
     private final SkillRegistry registry;
@@ -41,7 +41,7 @@ public class CustomerTools {
                 .filter(o -> o.product().contains(keyword)).toList();
     }
 
-    @Tool("按订单号查询当前身份有权访问的订单详情。无权访问与不存在统一返回未找到。数据为模拟数据，不包含质量问题或用户意愿。")
+    @Tool("按订单号查询当前身份有权访问的订单详情。无权访问与不存在统一返回未找到。数据为模拟数据，不包含质 量问题或用户意愿。")
     public Object getMyOrderDetails(@P("已由用户明确提供或选择的订单号") String orderNumber) {
         String number = orderNumber == null ? "" : orderNumber.trim().toUpperCase(Locale.ROOT);
         return orders.stream().filter(o -> identity.canAccessOrder(o.orderNumber()) && o.orderNumber().equals(number))

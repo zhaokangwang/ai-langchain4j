@@ -1,5 +1,7 @@
 package com.example.ai;
 
+import org.springframework.context.annotation.Import;
+
 import com.example.ai.model.RecordedStreamingModelClient;
 import com.example.ai.stream.ChatStream;
 import com.example.ai.model.RecordedModelClient;
@@ -33,6 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "langchain4j.open-ai.chat-model.api-key=test-key-not-used")
 @AutoConfigureMockMvc
+@Import(TestAuthenticatedRequests.class)
+@WithBusinessIdentity
 class StreamingChatIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired CustomerChatService service;
@@ -90,7 +94,8 @@ class StreamingChatIntegrationTest {
         ChatStream stream=new ChatStream((event,data)->{if(event.equals("delta"))deltaReceived.countDown();});
         ExecutorService executor=Executors.newSingleThreadExecutor();
         try {
-            var work=executor.submit(()->service.chat(null,"长回答",request,stream));
+            var captured=service.prepareChat(null,"长回答",request,stream);
+            var work=executor.submit(captured::get);
             assertThat(deltaReceived.await(10,TimeUnit.SECONDS)).isTrue();
             assertThat(work.isDone()).isFalse();
             stream.cancel("用户取消");

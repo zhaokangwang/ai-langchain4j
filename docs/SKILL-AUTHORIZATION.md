@@ -1,26 +1,28 @@
-# 多角色技能：第一阶段
+# 多角色技能与登录授权
 
-报表扩展：新增 order-report，当前注册技能共 10 个，买家/客服/仓库分别可见 6/8/3 个技能。application.yml 当前默认身份为 service。下文保留第一阶段记录；报表及 V5 迁移见 [REPORTS.md](REPORTS.md)。
+账号功能第四批已把 Session 登录角色接入 Skill、工具和共享数据。页面顶部登录账号与能力面板角色一致，同角色共享会话/快照，跨角色由后端拦截。异步快照、账号复核与兼容说明见 [ROLE-SHARING.md](ROLE-SHARING.md)；账号管理见 [ACCOUNTS.md](ACCOUNTS.md)。
 
-后续进度：第二阶段已接入问题＋会话状态路由、少量候选、按加载技能收缩工具和歧义追问，详见 [SKILL-ROUTING.md](SKILL-ROUTING.md)。下面保留第一阶段的角色、注册表和启动配置说明。
+报表扩展：新增 order-report，当前注册技能共 10 个，买家/客服/仓库分别可见 6/8/3 个技能。角色取自登录账号；报表及 V5 迁移见 [REPORTS.md](REPORTS.md)。
 
-已实现：后端演示身份、九个结构化技能、按角色过滤目录和工具、技能及工具执行校验、模拟数据范围、会话及记录归属隔离。普通 JSON 与 SSE 使用同一 CustomerChatService，无数据库迁移或数据清空。
+业务路由已接入问题＋会话状态、少量候选、按加载技能收缩工具和歧义追问，详见 [SKILL-ROUTING.md](SKILL-ROUTING.md)。
+
+已实现：登录身份快照、十个结构化技能、按角色过滤目录和工具、技能及工具执行校验、模拟数据范围、角色共享会话与记录。普通 JSON 与 SSE 使用同一 CustomerChatService，本批不迁移或清空已有数据。
 
 ## 选择身份
 
-本阶段是启动配置身份，每个进程只有一个当前账号。不是登录系统，也没有客户端角色切换接口。不要以请求头、问题中的“我是管理员”等文字作为身份依据。后续正式多用户登录应改为从经过认证的安全上下文获取身份，并为异步执行显式传递身份快照。
+管理员创建账号时选择 buyer、service、warehouse。用户登录后由服务端账号记录决定角色，不能以请求头、请求参数或“我是管理员”等聊天文字切换身份。管理员维护权限与业务角色分开，不默认获得全部技能。
 
-IDEA Run Configuration 的 Environment variables 增加 `DEMO_ACCOUNT=buyer`、`DEMO_ACCOUNT=service` 或 `DEMO_ACCOUNT=warehouse`，保留原 DEEPSEEK_API_KEY，然后重启应用。也可以在 Program arguments 添加 `--app.demo.account=service`。不支持的账号值将阻止启动。使用同一个文件数据库时，依次停止、切换、重启，不启动多个进程争用文件。
+切换角色请退出后登录另一个角色账号，无需重启；启动配置 DEMO_ACCOUNT/app.demo.account 不再决定身份。Spring 管理的 DemoIdentity 必须读取认证快照，无匿名回退；固定字符串构造器只用于显式教学实例及隔离测试。SSE 将快照带入工作线程并在退出时清理。
 
-| 配置值 | 账号 | 数据范围 | 可见技能数 |
+| 登录角色 | 共享分区及枚举 | 数据范围 | 可见技能数 |
 | --- | --- | --- | --- |
-| buyer（默认） | demo-user / BUYER | 本人 A1001、A1002、A1003 | 5 |
-| service | demo-service / CUSTOMER_SERVICE | 分配工单 AS2001 及关联订单 A1001 | 7 |
-| warehouse | demo-warehouse / WAREHOUSE | 所属仓库 WH01 及订单 A1002 | 2 |
+| buyer | demo-user / BUYER | 角色共享 A1001、A1002、A1003 | 6 |
+| service | demo-service / CUSTOMER_SERVICE | 角色共享工单 AS2001 及关联订单 A1001 | 8 |
+| warehouse | demo-warehouse / WAREHOUSE | 角色共享仓库 WH01 及订单 A1002 | 3 |
 
 访问 `GET /api/demo/capabilities` 查看当前后端身份和授权技能元数据，不调用模型，也不返回未授权目录。前端仍沿用原聊天页面，身份细节、路由进度和交互在第三阶段接入。
 
-## 九个技能
+## 技能目录
 
 | 技能 | 业务范围 | 角色 |
 | --- | --- | --- |
@@ -33,6 +35,7 @@ IDEA Run Configuration 的 Environment variables 增加 `DEMO_ACCOUNT=buyer`、`
 | refund-progress-query | 已有退款进度 | 买家、客服 |
 | warehouse-stock-check | 当前仓库库存 | 仓库 |
 | shipment-exception-review | 当前仓库发货异常建议 | 仓库 |
+| order-report | 角色范围内的订单报表、快照和下载 | 买家、客服、仓库 |
 
 `src/main/resources/skills/registry.json` 是授权注册表，包含 name、category、description、notFor、allowedRoles、allowedTools；对应目录的 SKILL.md 是正文。注册时验证名称、重复项、正文、角色和工具名称。模型首次只获得当前角色的目录摘要；loadSkill 再次校验权限后才返回正文。路径和角色不接受模型指定。
 
@@ -49,7 +52,7 @@ IDEA Run Configuration 的 Environment variables 增加 `DEMO_ACCOUNT=buyer`、`
 
 ## 保存与兼容
 
-conversations.owner_id 改用当前后端账号；默认买家继续使用 demo-user，旧记录仍保留。切换角色后，最近会话列表和消息、执行记录只允许读取当前账号数据；前端缓存旧 conversationId 时会按不可访问处理。不能通过复用其他账号 requestId 读取完成结果或追加上下文。
+conversations.owner_id 和报表快照 owner_id 使用三个角色分区 ID，旧记录继续保留。同角色可读取和继续共享会话及复用完成结果；跨角色列表、消息、执行记录、快照及下载均受范围限制，不能复用其他角色 requestId 取得结果或追加上下文。新 AUTHORIZATION 另记实际发起账号 actor，旧事件不推测补齐。
 
 每次新执行写入 AUTHORIZATION 事件，记录账号、角色、数据范围和授权技能名单，可在现有执行记录面板查看。被拒绝的技能/工具调用记录为 FAILED，不返回技能正文。原旧售后示例接口仍保留，使用独立的 order-after-sales-review 教学文件，不计入统一聊天的九个注册技能；该接口不查询订单，仅评估用户传入材料，仓库身份禁止访问。原 OrderTools 查询也遵守当前账号的订单范围。
 

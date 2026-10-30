@@ -1,9 +1,16 @@
 app:
-  demo:
-    # buyer / service / warehouse；启动时确定，不允许聊天内容或请求头切换角色。
-    account: ${DEMO_ACCOUNT:service}
+  accounts:
+    # 仅在首次创建 admin 时使用；重启不覆盖已有密码或状态。
+    initial-admin-password: ${APP_ADMIN_PASSWORD:admin}
 
 server:
+  servlet:
+    session:
+      timeout: 30m
+      tracking-modes: cookie
+      cookie:
+        http-only: true
+        same-site: lax
   # 本机 Windows 保留了 7981–8080，使用可覆盖的替代端口。
   port: ${SERVER_PORT:18080}
 

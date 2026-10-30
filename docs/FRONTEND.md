@@ -1,5 +1,13 @@
 # 回答阅读体验与调用记录
 
+账号第二批已接入登录页 `/login.html`、本人改密页 `/account.html` 和聊天/报表页顶部的账号栏。未登录访问业务页会跳到登录页；首次管理员登录要求先改密。`auth.js` 为包括 SSE 在内的业务写请求添加 CSRF，登录过期返回登录页，不自动重发业务请求。使用边界与接口见 [ACCOUNTS.md](ACCOUNTS.md)。
+
+第三批增加管理员专用 `/admin-accounts.html`，支持分页筛选、添加普通账号、重置密码和禁用/启用。账号栏根据服务器返回的管理员标记显示入口；管理页及接口都有后端权限校验。交互使用原生 dialog，保存时防止重复提交，密码不会在列表回显或存到浏览器。
+
+第四批已将登录角色接入 Skill 和角色共享数据。能力面板显示实际账号及共享分区，历史授权摘要保留当时的 actor，不用当前账号覆盖。同角色刷新保留当前共享会话，跨角色刷新清除旧视图。登录、退出和本人密码变化通过只含 changed 的 BroadcastChannel 通知其他标签页刷新，不发送账号或凭据；后端权限校验始终生效。详见 [ROLE-SHARING.md](ROLE-SHARING.md)。
+
+第五批增加 `scripts/page-contract-check.cjs`，使用实际本地 Vue 编译器检查五个页面模板，并按 Unicode Sets `v` 规则检查 HTML 原生 pattern。发现并修复了创建账号表单短横线未转义的兼容问题。该检查没有 DOM 挂载或浏览器点击能力，不能代替视觉和交互验收。
+
 多角色技能第三阶段新增身份与授权技能面板、实时路由卡片和按尝试的历史摘要，见 [SKILL-UI.md](SKILL-UI.md)。
 
 重启 Spring Boot 后访问 http://localhost:18080/ ，必要时 Ctrl+F5 刷新本地脚本。
@@ -38,4 +46,4 @@
 记录面板中的原始模型/工具 JSON 继续使用 Vue 文本插值，不作为 Markdown 或 HTML 执行。
 渲染库加载失败时使用转义后的文本显示，不直接插入未过滤 HTML。
 
-`node --test scripts/frontend-check.cjs` 验证复制、工具摘要和不强制跳底等交互；浏览器验证使用 target/ 下的临时模拟服务，不写入实际数据库、不调用模型。Java 集成测试验证新增本地资源可以正常访问。
+完整前端检查命令为 `node --test scripts/frontend-check.cjs scripts/report-frontend-check.cjs scripts/auth-frontend-check.cjs scripts/admin-accounts-frontend-check.cjs scripts/page-contract-check.cjs`，覆盖聊天、报表、认证、账号管理行为以及模板和表单契约，本批共 41 项通过。另对 `static/js` 全部 9 个脚本执行 `node --check` 通过。真实 HTTP 测试验证资源访问、Cookie 和业务接口；浏览器自动化因内核资源启动故障未能运行，未将实际点击和视觉验收计为通过。当前验收状态见 [ACCOUNT-DELIVERY.md](ACCOUNT-DELIVERY.md)。

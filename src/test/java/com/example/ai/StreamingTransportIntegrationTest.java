@@ -1,5 +1,7 @@
 package com.example.ai;
 
+import org.springframework.context.annotation.Import;
+
 import com.example.ai.repository.ChatHistoryRepository;
 
 import com.sun.net.httpserver.HttpServer;
@@ -24,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** 使用真实自动配置的 OpenAI 模型和 Spring RestClient，仅供应商服务为本地模拟。 */
 @SpringBootTest(properties = "langchain4j.open-ai.chat-model.api-key=local-test-only")
 @AutoConfigureMockMvc
+@Import(TestAuthenticatedRequests.class)
+@WithBusinessIdentity
 class StreamingTransportIntegrationTest {
     static final AtomicInteger requests = new AtomicInteger();
     static final HttpServer upstream = startServer();

@@ -30,6 +30,7 @@ public class HistoryService {
     }
 
     public ConversationPage conversations(String status, int page, int size) {
+        identity.requireActive(null);
         if (!Set.of("ACTIVE", "ARCHIVED").contains(status) || page < 0 || page > 100_000 || size < 1 || size > 100) {
             throw bad("分页或状态参数无效");
         }
@@ -38,6 +39,7 @@ public class HistoryService {
     }
 
     public MessagePage messages(String id, Long before, int size) {
+        identity.requireActive(null);
         if (size < 1 || size > 100 || (before != null && before < 1)) {
             throw bad("消息分页参数无效");
         }
@@ -50,6 +52,7 @@ public class HistoryService {
     }
 
     public Conversation change(String id, Change request) {
+        identity.requireActive(null);
         if (request.title() == null && request.status() == null) {
             throw bad("请提供标题或状态");
         }
@@ -77,6 +80,7 @@ public class HistoryService {
     }
 
     public RunDetail run(String requestId, Integer attempt) {
+        identity.requireActive(null);
         if (attempt != null && attempt < 1) {
             throw bad("尝试次数无效");
         }

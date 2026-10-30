@@ -11,7 +11,7 @@
     const money=value=>Number(value).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
     const time=value=>new Date(value).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false});
     async function request(url,options){
-      const response=await fetch(url,options);
+      const response=await window.AuthApi.request(url,options);
       if(!response.ok){let message='请求失败（'+response.status+'）';try{const data=await response.json();message=data.detail||data.message||message;}catch{}throw new Error(message);}
       return response;
     }

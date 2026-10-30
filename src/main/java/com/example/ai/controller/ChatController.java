@@ -23,7 +23,7 @@ public class ChatController {
     }
 
     @PostMapping
-    @Operation(summary = "向 AI 提问", description = "统一客服入口：根据对话选择文件技能、查订单、追问并提供售后建议。首轮可省略 conversationId，后续传回响应中的 ID。固定单用户模拟环境，无真实退款操作。")
+    @Operation(summary = "向 AI 提问", description = "按登录角色授权技能、工具及数据，同角色共享会话。首轮可省略 conversationId，后续传回响应中的 ID。全部为模拟业务，无真实退款操作。")
     public ChatResponse chat(@Valid @RequestBody ChatRequest request) {
         return service.chat(request.conversationId(), request.message(), request.requestId());
     }
